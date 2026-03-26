@@ -1,0 +1,22 @@
+{
+  "name": "brawlstars-proxy-server",
+  "version": "1.0.0",
+  "description": "Proxy server for Brawl Stars API to bypass IP restrictions",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["brawl-stars", "api", "proxy"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
