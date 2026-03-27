@@ -18,6 +18,17 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Brawl Stars Proxy Server is running' });
 });
 
+// Get server IP address
+app.get('/ip', async (req, res) => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    res.send(data.ip);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get IP address' });
+  }
+});
+
 // Proxy endpoint for all Brawl Stars API calls
 app.all('/api/*', async (req, res) => {
   try {
