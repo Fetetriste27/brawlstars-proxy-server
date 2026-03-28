@@ -41,9 +41,13 @@ app.all('/api/*', async (req, res) => {
     const path = req.path.replace('/api', '');
     const fullUrl = `${BASE_URL}${path}`;
 
+    console.log(`Proxying ${req.method} request to: ${fullUrl}`);
+
     // Build query string if present
     const queryString = new URLSearchParams(req.query).toString();
     const urlWithQuery = queryString ? `${fullUrl}?${queryString}` : fullUrl;
+    
+    console.log(`Full URL with query: ${urlWithQuery}`);
 
     // Make request to Brawl Stars API
     const response = await fetch(urlWithQuery, {
