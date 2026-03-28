@@ -60,7 +60,16 @@ app.all('/api/*', async (req, res) => {
     });
 
     // Get response data
-    const data = await response.json();
+    let data;
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      console.log(`Non-JSON response: ${text.substring(0, 100)}`);
+      data = { raw: text };
+    }
 
     // Return response with same status code
     res.status(response.status).json(data);
