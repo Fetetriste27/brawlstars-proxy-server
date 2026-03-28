@@ -34,6 +34,7 @@ app.all('/api/*', async (req, res) => {
   try {
     // Check if API key is configured
     if (!API_KEY) {
+      console.error('API key not configured');
       return res.status(500).json({ error: 'API key not configured on server' });
     }
 
@@ -41,40 +42,65 @@ app.all('/api/*', async (req, res) => {
     const path = req.path.replace('/api', '');
     const fullUrl = `${BASE_URL}${path}`;
 
-    console.log(`Proxying ${req.method} request to: ${fullUrl}`);
-
     // Build query string if present
     const queryString = new URLSearchParams(req.query).toString();
     const urlWithQuery = queryString ? `${fullUrl}?${queryString}` : fullUrl;
-    
-    console.log(`Full URL with query: ${urlWithQuery}`);
 
-    // Make request to Brawl Stars API
+    console.log(`[${new Date().toISOString()}] ${req.method} ${urlWithQuery}`);
+
+    // Make request to Brawl Stars API with timeout
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch(urlWithQuery, {
       method: req.method,
       headers: {
         'Authorization': `Bearer ${API_KEY}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
       body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
+      signal: controller.signal,
     });
 
-    // Get response data
+    clearTimeout(timeout);
+
+    console.log(`[${new Date().toISOString()}] Response status: ${response.status}`);
+
+    // Get response text first
+    const responseText = await response.text();
+    console.log(`[${new Date().toISOString()}] Response length: ${responseText.length} bytes`);
+
+    // Try to parse as JSON
     let data;
-    const contentType = response.headers.get('content-type');
-    
-    if (contentType && contentType.includes('application/json')) {
-      data = await response.json();
-    } else {
-      const text = await response.text();
-      console.log(`Non-JSON response: ${text.substring(0, 100)}`);
-      data = { raw: text };
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error(`[${new Date().toISOString()}] JSON parse error: ${parseError.message}`);
+      console.error(`[${new Date().toISOString()}] Response text: ${responseText.substring(0, 200)}`);
+      
+      // If it's not JSON, return the text as-is
+      if (response.ok) {
+        data = { raw: responseText };
+      } else {
+        return res.status(response.status).json({
+          error: 'Invalid JSON response from Brawl Stars API',
+          status: response.status,
+          message: responseText.substring(0, 200),
+        });
+      }
     }
 
     // Return response with same status code
+    console.log(`[${new Date().toISOString()}] Sending response with status ${response.status}`);
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('Proxy error:', error);
+    console.error(`[${new Date().toISOString()}] Proxy error:`, error);
+    
+    if (error.name === 'AbortError') {
+      return res.status(504).json({ error: 'Request timeout' });
+    }
+
     res.status(500).json({ 
       error: 'Proxy server error',
       message: error instanceof Error ? error.message : 'Unknown error'
@@ -89,7 +115,7 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
+  console.error(`[${new Date().toISOString()}] Server error:`, err);
   res.status(500).json({ 
     error: 'Internal server error',
     message: err instanceof Error ? err.message : 'Unknown error'
